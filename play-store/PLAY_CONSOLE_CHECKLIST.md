@@ -3,11 +3,12 @@
 ## Permanent identity
 
 - Application ID: `quest.byai.hrv`
+- Play Console app: Created as `HRV AI`.
 - Website: Leave blank; HRV AI is an Android-only product.
-- Privacy policy: `https://by211.github.io/hrv-ai/privacy-policy.html`
+- Privacy policy: `https://by211.github.io/hrv-ai/privacy-policy.html` (published and verified).
 - Initial version: `0.1.0` (`versionCode` 1)
 
-Do not create the Play Console app until the application ID and public app name are accepted as permanent.
+Treat the application ID and public app name as permanent now that the Play Console app exists.
 
 ## Build and signing
 
@@ -37,7 +38,7 @@ Do not create the Play Console app until the application ID and public app name 
   - Activity and Fitness — the app processes heart rate and R-R intervals.
   - Stress Management, Relaxation, Mental Acuity — the app provides paced-breathing guidance.
   - Do not declare Medical Device Apps; the product is explicitly wellness/biofeedback software.
-- Privacy policy: Publish `docs/privacy-policy.html` through GitHub Pages and verify the declared HTTPS URL.
+- Privacy policy: Published from `docs/privacy-policy.html` through GitHub Pages; the declared HTTPS URL returns the current policy.
 
 ## Proposed Data safety answers
 
