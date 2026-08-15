@@ -59,6 +59,8 @@ Publication materials are in `play-store/`: English listing copy, a policy-compl
 
 Release signing can be loaded from an ignored `keystore.properties` file or the `HRV_UPLOAD_*` environment variables. The macOS scripts in `scripts/` generate a dedicated upload keystore, store its password in Keychain, and build a signed bundle without putting credentials in source control. Back up the keystore separately; without it, locally built release artifacts are intentionally unsigned and cannot be uploaded to Play.
 
+After the upload key is configured, run `./Update-and-build.sh` from the repository root for each new Play build. It increments `versionCode` and the patch version, builds and verifies the signed AAB, copies its full path to the macOS clipboard, and opens the HRV AI Play Console dashboard. A failed build restores the previous version values.
+
 ## Physical H9 test
 
 1. Install the debug APK on a phone running Android 13 or newer.
