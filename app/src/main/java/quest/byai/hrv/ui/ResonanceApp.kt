@@ -1,10 +1,13 @@
 package quest.byai.hrv.ui
 
 import android.Manifest
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.media.AudioManager
 import android.media.ToneGenerator
+import android.os.Build
 import android.os.SystemClock
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -106,6 +109,7 @@ import quest.byai.hrv.domain.UserFeedback
 import quest.byai.hrv.session.SessionSnapshot
 import quest.byai.hrv.sensor.SensorDiagnostics
 import quest.byai.hrv.R
+import quest.byai.hrv.BuildConfig
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
@@ -416,14 +420,14 @@ private fun SensorScreen(
                             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                 Button(onClick = onScan) { Text("Scan nearby") }
                                 if (savedDeviceId != null) {
-                                    OutlinedButton(onClick = onReconnect) { Text("Reconnect $savedDeviceId") }
+                                    OutlinedButton(onClick = onReconnect) { Text("Reset & reconnect") }
                                 }
                             }
                         }
                     }
                 }
             }
-            item { SensorDiagnosticsCard(diagnostics, batteryLevel) }
+            item { SensorDiagnosticsCard(connectionState, diagnostics, batteryLevel) }
             if (connectionState == SensorConnectionState.SCANNING) {
                 item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
             }
@@ -450,9 +454,24 @@ private fun SensorScreen(
 }
 
 @Composable
-private fun SensorDiagnosticsCard(diagnostics: SensorDiagnostics, batteryLevel: Int?) {
+private fun SensorDiagnosticsCard(
+    connectionState: SensorConnectionState,
+    diagnostics: SensorDiagnostics,
+    batteryLevel: Int?,
+) {
+    val context = LocalContext.current
+    var diagnosticsCopied by remember { mutableStateOf(false) }
     val lastSampleAgeSeconds = diagnostics.lastSampleElapsedRealtimeMs?.let { timestamp ->
         ((SystemClock.elapsedRealtime() - timestamp).coerceAtLeast(0L) / 1_000L)
+    }
+    val diagnosticReport = remember(connectionState, diagnostics, batteryLevel) {
+        buildSensorDiagnosticReport(connectionState, diagnostics, batteryLevel)
+    }
+    LaunchedEffect(diagnosticsCopied) {
+        if (diagnosticsCopied) {
+            kotlinx.coroutines.delay(2_000)
+            diagnosticsCopied = false
+        }
     }
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -466,9 +485,48 @@ private fun SensorDiagnosticsCard(diagnostics: SensorDiagnostics, batteryLevel: 
             Text("Recoveries: ${diagnostics.recoveryCount}")
             Text("Last event: ${diagnostics.lastEvent}")
             diagnostics.lastError?.let { Text("Last error: $it", color = MaterialTheme.colorScheme.error) }
-            Text("Logcat tag: PolarHeartRateSensor", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
+            diagnostics.lastErrorDetails?.let {
+                Text("Cause: $it", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+            }
+            diagnostics.lastSdkLog?.let {
+                Text("Last SDK event: $it", style = MaterialTheme.typography.bodySmall)
+            }
+            OutlinedButton(
+                onClick = {
+                    context.getSystemService(ClipboardManager::class.java).setPrimaryClip(
+                        ClipData.newPlainText("HRV AI sensor diagnostics", diagnosticReport),
+                    )
+                    diagnosticsCopied = true
+                },
+            ) {
+                Text(if (diagnosticsCopied) "Diagnostics copied" else "Copy diagnostics")
+            }
+            Text(
+                "Logcat tags: PolarHeartRateSensor, PolarBleSdk",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.secondary,
+            )
         }
     }
+}
+
+private fun buildSensorDiagnosticReport(
+    connectionState: SensorConnectionState,
+    diagnostics: SensorDiagnostics,
+    batteryLevel: Int?,
+): String = buildString {
+    appendLine("HRV AI ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
+    appendLine("Phone: ${Build.MANUFACTURER} ${Build.MODEL}; Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})")
+    appendLine("State: ${connectionState.name}")
+    appendLine("Device: ${diagnostics.selectedDeviceName ?: "unknown"} (${diagnostics.selectedDeviceId ?: "none"})")
+    appendLine("HR samples: ${diagnostics.heartRateSampleCount}; R-R intervals: ${diagnostics.rrIntervalCount}")
+    appendLine("Last HR: ${diagnostics.lastHeartRateBpm ?: "none"}; last R-R: ${diagnostics.lastRrMs ?: "none"}")
+    appendLine("R-R confirmed: ${diagnostics.rrStreamConfirmed}; contact: ${diagnostics.contactStatus ?: "unknown"}; battery: ${batteryLevel ?: "unknown"}")
+    appendLine("Recoveries: ${diagnostics.recoveryCount}")
+    appendLine("Last event: ${diagnostics.lastEvent}")
+    appendLine("Last error: ${diagnostics.lastError ?: "none"}")
+    appendLine("Cause: ${diagnostics.lastErrorDetails ?: "none"}")
+    append("Last SDK event: ${diagnostics.lastSdkLog ?: "none"}")
 }
 
 @Composable

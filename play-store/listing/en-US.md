@@ -35,6 +35,6 @@ HRV AI is experimental wellness and biofeedback software. It is not a medical de
 
 Privacy policy: https://by211.github.io/hrv-ai/privacy-policy.html
 
-## Initial release notes
+## Internal testing release notes — 0.1.1
 
-Initial internal-testing release with Polar H9 connection diagnostics, fixed and adaptive paced breathing, calibration, local history, R-R export, and local data controls.
+Improves Polar H9 recovery with a full reset-and-reconnect action. Connection diagnostics now show the underlying BLE failure, recent Polar SDK details, phone/app versions, and can be copied for troubleshooting.

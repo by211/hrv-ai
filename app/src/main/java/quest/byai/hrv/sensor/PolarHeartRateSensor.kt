@@ -14,8 +14,11 @@ import com.polar.sdk.api.model.PolarDeviceInfo
 import com.polar.sdk.api.model.PolarHealthThermometerData
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -53,9 +56,24 @@ class PolarHeartRateSensor(context: Context) : HeartRateSensor {
 
     private var connectedDeviceId: String? = null
     private var streamStartedForDeviceId: String? = null
+    private var heartRateStreamJob: Job? = null
+    private var reconnectJob: Job? = null
 
     init {
         api.setAutomaticReconnection(true)
+        api.setApiLogger { message ->
+            Log.d(SDK_LOG_TAG, message)
+            if (
+                message.contains("error", ignoreCase = true) ||
+                message.contains("fail", ignoreCase = true) ||
+                message.contains("disconnect", ignoreCase = true) ||
+                message.contains("gatt", ignoreCase = true)
+            ) {
+                mutableDiagnostics.value = mutableDiagnostics.value.copy(
+                    lastSdkLog = message.take(MAX_DIAGNOSTIC_MESSAGE_LENGTH),
+                )
+            }
+        }
         api.setApiCallback(object : PolarBleApiCallback() {
             override fun blePowerStateChanged(powered: Boolean) {
                 if (powered) recordEvent("Bluetooth powered on")
@@ -82,6 +100,7 @@ class PolarHeartRateSensor(context: Context) : HeartRateSensor {
                     rrStreamConfirmed = false,
                     lastEvent = "Bluetooth connected; waiting for heart-rate service",
                     lastError = null,
+                    lastErrorDetails = null,
                 )
                 recordEvent("Bluetooth connected; waiting for heart-rate service", polarDeviceInfo.deviceId)
             }
@@ -134,7 +153,7 @@ class PolarHeartRateSensor(context: Context) : HeartRateSensor {
                 if (PolarBleApi.PolarBleSdkFeature.FEATURE_HR in ready) startHrStream(identifier)
                 if (PolarBleApi.PolarBleSdkFeature.FEATURE_HR in unavailable) {
                     recordError(
-                        message = "This device does not provide the BLE heart-rate service",
+                        fallbackMessage = "This device does not provide the BLE heart-rate service",
                         deviceId = identifier,
                     )
                 }
@@ -157,24 +176,52 @@ class PolarHeartRateSensor(context: Context) : HeartRateSensor {
                 )
             }
             .catch { error ->
-                recordError(error.userFacingMessage("Unable to scan for sensors"), error = error)
+                recordError("Unable to scan for sensors", error = error)
                 throw error
             }
     }
 
     override fun connect(deviceId: String) {
+        reconnectJob?.cancel()
+        requestConnection(deviceId, "Connection requested")
+    }
+
+    override fun reconnect(deviceId: String) {
+        reconnectJob?.cancel()
+        reconnectJob = scope.launch {
+            mutableConnectionState.value = SensorConnectionState.RECOVERING
+            mutableErrorMessage.value = null
+            recordEvent("Resetting Bluetooth connection", deviceId)
+            api.setAutomaticReconnection(false)
+            try {
+                connectedDeviceId = null
+                streamStartedForDeviceId = null
+                heartRateStreamJob?.cancelAndJoin()
+                heartRateStreamJob = null
+                runCatching { api.disconnectFromDevice(deviceId) }
+                    .onFailure { Log.d(LOG_TAG, "No active connection to close [device=$deviceId]", it) }
+                delay(RECONNECT_RESET_DELAY_MS)
+            } finally {
+                api.setAutomaticReconnection(true)
+            }
+            requestConnection(deviceId, "Reset complete; connection requested")
+        }
+    }
+
+    private fun requestConnection(deviceId: String, event: String) {
         try {
             mutableConnectionState.value = SensorConnectionState.CONNECTING
             mutableErrorMessage.value = null
             connectedDeviceId = deviceId
             mutableDiagnostics.value = SensorDiagnostics(
                 selectedDeviceId = deviceId,
-                lastEvent = "Connection requested",
+                recoveryCount = mutableDiagnostics.value.recoveryCount,
+                lastEvent = event,
             )
-            recordEvent("Connection requested", deviceId)
+            recordEvent(event, deviceId)
             api.connectToDevice(deviceId)
         } catch (error: Exception) {
-            recordError(error.userFacingMessage("Unable to connect to $deviceId"), deviceId, error)
+            recordError("Unable to connect to $deviceId", deviceId, error)
         }
     }
 
@@ -186,10 +233,14 @@ class PolarHeartRateSensor(context: Context) : HeartRateSensor {
     }
 
     override fun disconnect() {
-        val deviceId = connectedDeviceId ?: return
+        reconnectJob?.cancel()
+        reconnectJob = null
+        heartRateStreamJob?.cancel()
+        heartRateStreamJob = null
+        val deviceId = connectedDeviceId
         connectedDeviceId = null
         streamStartedForDeviceId = null
-        runCatching { api.disconnectFromDevice(deviceId) }
+        if (deviceId != null) runCatching { api.disconnectFromDevice(deviceId) }
         mutableConnectionState.value = SensorConnectionState.DISCONNECTED
         mutableDiagnostics.value = mutableDiagnostics.value.copy(
             rrStreamConfirmed = false,
@@ -208,11 +259,11 @@ class PolarHeartRateSensor(context: Context) : HeartRateSensor {
         if (streamStartedForDeviceId == deviceId) return
         streamStartedForDeviceId = deviceId
         recordEvent("Starting heart-rate stream", deviceId)
-        scope.launch {
+        heartRateStreamJob = scope.launch {
             api.startHrStreaming(deviceId)
                 .catch { error ->
                     streamStartedForDeviceId = null
-                    recordError(error.userFacingMessage("Heart-rate stream stopped"), deviceId, error, recovering = true)
+                    recordError("Heart-rate stream stopped", deviceId, error, recovering = true)
                 }
                 .collect { data ->
                     mutableConnectionState.value = SensorConnectionState.STREAMING
@@ -244,25 +295,28 @@ class PolarHeartRateSensor(context: Context) : HeartRateSensor {
     }
 
     private fun recordError(
-        message: String,
+        fallbackMessage: String,
         deviceId: String? = connectedDeviceId,
         error: Throwable? = null,
         recovering: Boolean = false,
     ) {
+        val failure = error?.toSensorFailure(fallbackMessage)
+        val message = failure?.userMessage ?: fallbackMessage
         mutableConnectionState.value = if (recovering) SensorConnectionState.RECOVERING else SensorConnectionState.FAILED
         mutableErrorMessage.value = message
         mutableDiagnostics.value = mutableDiagnostics.value.copy(
             rrStreamConfirmed = false,
             lastEvent = message,
             lastError = message,
+            lastErrorDetails = failure?.technicalDetails,
         )
         Log.e(LOG_TAG, "$message${deviceId?.let { " [device=$it]" }.orEmpty()}", error)
     }
 
-    private fun Throwable.userFacingMessage(fallback: String): String =
-        message?.takeIf { it.isNotBlank() } ?: fallback
-
     private companion object {
         const val LOG_TAG = "PolarHeartRateSensor"
+        const val SDK_LOG_TAG = "PolarBleSdk"
+        const val MAX_DIAGNOSTIC_MESSAGE_LENGTH = 500
+        const val RECONNECT_RESET_DELAY_MS = 1_000L
     }
 }

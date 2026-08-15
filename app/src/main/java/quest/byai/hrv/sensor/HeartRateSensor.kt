@@ -19,6 +19,8 @@ data class SensorDiagnostics(
     val recoveryCount: Int = 0,
     val lastEvent: String = "Sensor idle",
     val lastError: String? = null,
+    val lastErrorDetails: String? = null,
+    val lastSdkLog: String? = null,
 ) {
     fun withSample(sample: HeartRateSample): SensorDiagnostics {
         val hasRrIntervals = sample.rrAvailable && sample.rrIntervalsMs.isNotEmpty()
@@ -37,6 +39,7 @@ data class SensorDiagnostics(
                 "Heart rate received; waiting for R-R data"
             },
             lastError = null,
+            lastErrorDetails = null,
         )
     }
 }
@@ -51,6 +54,7 @@ interface HeartRateSensor {
     fun scan(): Flow<SensorDevice>
     fun stopScan()
     fun connect(deviceId: String)
+    fun reconnect(deviceId: String)
     fun disconnect()
     fun close()
 }

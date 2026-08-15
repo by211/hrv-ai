@@ -184,7 +184,7 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     fun reconnectSavedSensor() {
-        settings.value.savedDeviceId?.let(container.sensor::connect)
+        settings.value.savedDeviceId?.let(container.sensor::reconnect)
     }
 
     fun disconnectSensor() {
