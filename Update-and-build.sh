@@ -96,5 +96,5 @@ printf '%s' "$signed_bundle" | pbcopy
 
 echo "Signed bundle: $signed_bundle"
 echo "The bundle path has been copied to the clipboard."
-echo "Opening the HRV AI Play Console dashboard in Google Chrome..."
-open -a "Google Chrome" "$play_console_url"
+echo "Opening the HRV AI Play Console dashboard in Firefox..."
+open -a "Firefox" "$play_console_url"
