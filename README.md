@@ -10,9 +10,10 @@ See [ANDROID_HRV_RESONANCE_APP_PLAN.md](ANDROID_HRV_RESONANCE_APP_PLAN.md) for t
 
 ## Implemented
 
-- Polar H9 discovery, explicit selection, saved-device reconnect, HR/R-R streaming, contact state, battery state, and error reporting.
-- Live connection diagnostics for device identity, HR/R-R counts, last values, sample age, contact, recovery attempts, last event/error, and a `PolarHeartRateSensor` Logcat trail.
-- Android 12+ Nearby Devices permission flow. The app's current `minSdk` is 33 because that is the requirement in Polar SDK 8.1's quickstart.
+- Standard BLE Heart Rate Service discovery, explicit selection, saved-device reconnect, HR/R-R streaming, contact state, battery state, and error reporting, tested primarily with Polar H9.
+- Elite HRV-inspired connection recovery: service-filtered scanning, a fresh native GATT connection for each attempt, stale-connection cancellation, notification readiness based on actual samples, and full GATT rebuilds when samples stop.
+- Live connection diagnostics for device identity, HR/R-R counts, last values, sample age, contact, recovery attempts, GATT status, and a `BleHeartRateSensor` Logcat trail.
+- Android 12+ Nearby Devices permission flow. The app currently targets Android 13 and newer (`minSdk` 33).
 - Fixed, calibration, and adaptive session flows.
 - Monotonic visual breathing pacer with 50/50 and 40/60 ratios, optional sound, optional haptics, and screen-awake behavior.
 - R-R timestamp reconstruction for BLE notifications containing multiple intervals.
@@ -34,9 +35,7 @@ See [ANDROID_HRV_RESONANCE_APP_PLAN.md](ANDROID_HRV_RESONANCE_APP_PLAN.md) for t
 - Kotlin 2.2.21
 - Jetpack Compose
 - Room 2.8.4
-- Polar BLE SDK `8.1.0-java17`
-
-The normal Polar `8.1.0` JitPack artifact is compiled for Java 21. This project intentionally uses Polar's `8.1.0-java17` tag so it works with the JDK 17 Android toolchain.
+- Native Android Bluetooth LE GATT APIs
 
 ## Build and verify
 
@@ -87,6 +86,6 @@ The coefficients in `AnalysisConfig`, artifact thresholds in `ArtifactConfig`, a
 
 ## Current validation boundary
 
-The project builds, lints without errors, passes its deterministic local test suite, and has been cold-launched and navigated on a Pixel 6a API 36 emulator. This workspace did not have an attached physical Android phone or Polar H9 during implementation, so Bluetooth behavior, timing on physical hardware, and the adaptive policy's physiological validity still require the physical validation protocol in the implementation plan.
+The project builds, lints without errors, passes its deterministic local test suite, and has been cold-launched and navigated on a Pixel 6a API 36 emulator. The standard BLE transport has also been validated on a physical Pixel 10 running Android 16 with a Polar H9: service-filtered discovery, direct GATT connection, `0x180D` service discovery, `0x2A37` notification subscription, live heart-rate and R-R delivery, contact parsing, and battery reading all succeeded. A forced Bluetooth off/on cycle stopped notifications, triggered the bounded watchdog, rebuilt the GATT connection, and automatically resumed live R-R data. Longer H9 soak testing and the adaptive policy's physiological validity still require the physical validation protocol in the implementation plan.
 
 This is experimental wellness/biofeedback software, not a medical device. It does not measure respiration directly and must not be used to diagnose symptoms or heart rhythm conditions.

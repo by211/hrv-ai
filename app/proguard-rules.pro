@@ -1,2 +1,1 @@
--keep class com.polar.** { *; }
--dontwarn org.slf4j.**
+# No application-specific R8 rules are currently required.

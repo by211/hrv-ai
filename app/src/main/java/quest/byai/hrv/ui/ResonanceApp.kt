@@ -488,8 +488,8 @@ private fun SensorDiagnosticsCard(
             diagnostics.lastErrorDetails?.let {
                 Text("Cause: $it", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
             }
-            diagnostics.lastSdkLog?.let {
-                Text("Last SDK event: $it", style = MaterialTheme.typography.bodySmall)
+            diagnostics.lastBleEvent?.let {
+                Text("Last BLE event: $it", style = MaterialTheme.typography.bodySmall)
             }
             OutlinedButton(
                 onClick = {
@@ -502,7 +502,7 @@ private fun SensorDiagnosticsCard(
                 Text(if (diagnosticsCopied) "Diagnostics copied" else "Copy diagnostics")
             }
             Text(
-                "Logcat tags: PolarHeartRateSensor, PolarBleSdk",
+                "Logcat tag: BleHeartRateSensor",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.secondary,
             )
@@ -526,7 +526,7 @@ private fun buildSensorDiagnosticReport(
     appendLine("Last event: ${diagnostics.lastEvent}")
     appendLine("Last error: ${diagnostics.lastError ?: "none"}")
     appendLine("Cause: ${diagnostics.lastErrorDetails ?: "none"}")
-    append("Last SDK event: ${diagnostics.lastSdkLog ?: "none"}")
+    append("Last BLE event: ${diagnostics.lastBleEvent ?: "none"}")
 }
 
 @Composable

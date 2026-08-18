@@ -118,25 +118,23 @@ The app should never speed up or slow down breath-by-breath in response to a sin
 - Gradle version catalog with pinned dependency versions.
 - JUnit plus Kotlin coroutine test tools for deterministic unit tests.
 
-### Polar integration decision
+### Heart-rate sensor integration decision
 
-Start with Polar's official BLE SDK using only `FEATURE_HR` (and battery/device information if useful), behind an app-owned `HeartRateSensor` interface. The SDK's heart-rate feature receives standard BLE HR and R-R data; H9 does not use PMD online streaming. The implemented project pins Polar `8.1.0-java17`, the upstream Java 17-compatible build of the current `8.1.0` release.
+Use Android's native Bluetooth GATT APIs behind an app-owned `HeartRateSensor` interface. Scan for the standard Heart Rate Service (`0x180D`), subscribe to Heart Rate Measurement (`0x2A37`), and parse every R-R interval in each notification. The Polar H9 is the primary test sensor, but the transport intentionally follows the Bluetooth standard rather than depending on Polar's SDK.
 
 Benefits:
 
-- Polar-supported discovery, connection, and parsing behavior.
-- The H9-specific path can be proven quickly.
-- `rrAvailable`, `rrsMs`, contact state, device ID, and connection callbacks are already modeled.
+- The same interoperability path used by Elite HRV and other standards-based HRV applications.
+- No vendor SDK channel or ReactiveX bridge between Android GATT callbacks and the app.
+- Smaller release artifacts and direct visibility into Android connection status codes.
+- Compatibility with other straps that expose accurate R-R intervals through `0x2A37`.
 
 Costs:
 
-- The current SDK brings ReactiveX at the transport edge.
-- Its current Android compatibility/version requirements need to be checked and pinned at project creation.
-- The SDK is larger than a hand-written parser for BLE service `0x180D`.
+- GATT operation ordering, stale callbacks, reconnect timing, notification subscription, and payload parsing are app responsibilities.
+- Physical-device testing is required because emulators cannot validate BLE sensor behavior.
 
-Keep Rx types inside `PolarHeartRateSensor`; expose only coroutine `Flow` and domain models to the rest of the app. If dependency size or Android-version support becomes unacceptable, add a `StandardBleHeartRateSensor` implementation later without changing the signal, controller, storage, or UI layers.
-
-Do not begin by maintaining both implementations. Prove the official SDK path first.
+`StandardBleHeartRateSensor` exposes only coroutine `Flow` and domain models to the rest of the app. It always closes a stale `BluetoothGatt` before opening a new one, declares readiness only after real samples arrive, and uses a bounded watchdog to rebuild the connection when notifications stop.
 
 ## 6. Architecture
 
@@ -148,7 +146,7 @@ UI (Compose screens and pacer)
 Session coordinator (lifecycle and state machines)
     |-----------------------------|
 HeartRateSensor                    AdaptiveBreathingController
-(Polar SDK adapter)                (pure Kotlin)
+(standard BLE GATT adapter)        (pure Kotlin)
     |                              |
 RR quality and signal pipeline ----|
     |
@@ -540,7 +538,7 @@ Create these issues in order:
 
 1. Bootstrap the Android project and deterministic signal replay harness.
 2. Define domain models and the `HeartRateSensor` abstraction.
-3. Integrate Polar `FEATURE_HR` and show device discovery/connection state.
+3. Integrate standard BLE Heart Rate Service notifications and show device discovery/connection state.
 4. Capture and export every H9 R-R interval with quality metadata.
 5. Build a diagnostic 20-minute H9 soak test.
 6. Implement the monotonic fixed breathing pacer.
@@ -556,9 +554,10 @@ Create these issues in order:
 ## 16. Sources checked
 
 - Local HRV and resonance-breathing guide: `hrv_resonance_breathing_complete_chat_guide.md`
-- Polar BLE SDK and Android quickstart: https://github.com/polarofficial/polar-ble-sdk
-- Polar H9 SDK capabilities: https://github.com/polarofficial/polar-ble-sdk/blob/master/documentation/products/PolarH9.md
-- Polar Android SDK API (`FEATURE_HR`): https://polarofficial.github.io/polar-ble-sdk/polar-sdk-android/com/polar/sdk/api/PolarBleApi.PolarBleSdkFeature.html
+- Elite HRV standard BLE service/characteristic documentation: https://help.elitehrv.com/article/378-connecting-a-3rd-party-device-to-elite-hrv
+- Bluetooth SIG Heart Rate Service specification: https://www.bluetooth.com/wp-content/uploads/Files/Specification/HTML/HRS_v1.0/out/en/index-en.html
+- Android GATT connection guide: https://developer.android.com/develop/connectivity/bluetooth/ble/connect-gatt-server
+- Android GATT notification guide: https://developer.android.com/develop/connectivity/bluetooth/ble/transfer-ble-data
 - Polar H9 manual: https://support.polar.com/e_manuals/h9-heart-rate-sensor/polar-h9-user-manual-english/manual.pdf
 - Android Bluetooth permissions: https://developer.android.com/develop/connectivity/bluetooth/bt-permissions
 - Android Health Connect write guidance: https://developer.android.com/health-and-fitness/health-connect/write-data

@@ -6,7 +6,7 @@ import quest.byai.hrv.data.AppPreferences
 import quest.byai.hrv.data.ResonanceDatabase
 import quest.byai.hrv.data.SessionRepository
 import quest.byai.hrv.sensor.HeartRateSensor
-import quest.byai.hrv.sensor.PolarHeartRateSensor
+import quest.byai.hrv.sensor.StandardBleHeartRateSensor
 
 class ResonanceApplication : Application() {
     lateinit var container: AppContainer
@@ -27,5 +27,5 @@ class AppContainer(application: Application) {
 
     val preferences = AppPreferences(application)
     val repository = SessionRepository(database.resonanceDao())
-    val sensor: HeartRateSensor = PolarHeartRateSensor(application)
+    val sensor: HeartRateSensor = StandardBleHeartRateSensor(application)
 }

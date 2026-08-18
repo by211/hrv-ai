@@ -20,7 +20,7 @@ data class SensorDiagnostics(
     val lastEvent: String = "Sensor idle",
     val lastError: String? = null,
     val lastErrorDetails: String? = null,
-    val lastSdkLog: String? = null,
+    val lastBleEvent: String? = null,
 ) {
     fun withSample(sample: HeartRateSample): SensorDiagnostics {
         val hasRrIntervals = sample.rrAvailable && sample.rrIntervalsMs.isNotEmpty()
