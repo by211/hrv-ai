@@ -35,6 +35,6 @@ HRV AI is experimental wellness and biofeedback software. It is not a medical de
 
 Privacy policy: https://by211.github.io/hrv-ai/privacy-policy.html
 
-## Internal testing release notes — 0.1.2
+## Internal testing release notes — 0.1.3
 
-Uses direct standard Bluetooth heart-rate notifications, adds full GATT reset/recovery when samples stop, and expands copyable connection diagnostics.
+Adds a rolling live HRV score and completed-session artifact-corrected RMSSD/lnRMSSD calculation while retaining resonance-guided breathing-rate adaptation.

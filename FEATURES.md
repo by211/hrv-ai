@@ -68,11 +68,11 @@ HRV AI is wellness and biofeedback software. It is not a medical device and does
 
 ## Real-time calculation and adjustment
 
-The sensor provides the same raw R-R data needed for both Elite HRV-style lnRMSSD and HRV AI's resonance analysis. An Elite-compatible rolling HRV value can therefore be calculated alongside the existing controller without changing sensor hardware or Bluetooth transport.
+The sensor provides the same raw R-R data needed for both Elite HRV-style lnRMSSD and HRV AI's resonance analysis. HRV AI calculates an Elite-compatible rolling HRV value alongside the existing controller without changing sensor hardware or Bluetooth transport.
 
 Elite HRV's live display uses approximately the latest 15 seconds of R-R intervals, calculates cleaned RMSSD, applies `ln(RMSSD)`, and maps it to a 1–100 display value. That calculation is suitable as a responsive display or secondary trend.
 
-HRV AI does not currently expose that 15-second Elite-style score. It currently calculates RMSSD and SDNN inside each qualified analysis window and uses a separate resonance score for adaptation.
+HRV AI exposes that rolling 15-second score during active sessions. Completed sessions also store the Elite-compatible score, lnRMSSD, RMSSD, SDNN, and artifact percentage separately from the resonance score.
 
 Breathing-rate adjustment intentionally does not happen beat by beat or every two seconds. A change in breathing pace takes time to produce a stable cardiovascular response, and a short lnRMSSD window cannot determine whether variability is synchronized with the commanded breathing frequency. The adaptive controller therefore uses:
 
@@ -85,7 +85,7 @@ Breathing-rate adjustment intentionally does not happen beat by beat or every tw
 - dominant-frequency error; and
 - confidence and user-comfort checks.
 
-An Elite-style live score is compatible as an additional metric, visualization, quality signal, or future tie-breaker. It should not replace the resonance-coupling score as the direct control signal because maximizing short-window RMSSD alone can reward unrelated variability, movement artifacts, ectopic beats, or changes that are not caused by the breathing cue.
+The Elite-style live score is an additional metric and visualization. It does not replace the resonance-coupling score as the direct control signal because maximizing short-window RMSSD alone can reward unrelated variability, movement artifacts, ectopic beats, or changes that are not caused by the breathing cue.
 
 ## Signal processing
 
@@ -105,6 +105,8 @@ An Elite-style live score is compatible as an additional metric, visualization, 
 - Spectral concentration.
 - Dominant-frequency estimation and commanded-frequency error.
 - RMSSD and SDNN summaries.
+- Elite-compatible rolling 15-second lnRMSSD score.
+- Elite-compatible completed-session HRV score and artifact summary.
 - Versioned composite resonance score and confidence value.
 
 ## Session safety and lifecycle

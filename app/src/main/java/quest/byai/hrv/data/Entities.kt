@@ -19,13 +19,16 @@ data class SessionEntity(
     val averageHeartRate: Double? = null,
     val rmssdMs: Double? = null,
     val sdnnMs: Double? = null,
+    val eliteHrvScore: Double? = null,
+    val lnRmssd: Double? = null,
+    val eliteArtifactPercent: Double? = null,
     val resonanceScore: Double? = null,
     val confidence: Double? = null,
     val usableDataFraction: Double? = null,
     val ease: Int? = null,
     val symptomFlags: String = "",
     val notes: String = "",
-    val analysisVersion: Int = 1,
+    val analysisVersion: Int = 2,
 )
 
 @Entity(

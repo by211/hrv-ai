@@ -686,6 +686,11 @@ private fun ActiveSessionScreen(
         HeartRateWave(snapshot.recentHeartRates, Modifier.fillMaxWidth().height(100.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(snapshot.currentHeartRate?.let { "$it bpm" } ?: "— bpm", fontWeight = FontWeight.Medium)
+            Text(
+                snapshot.liveHrv?.score?.let { "HRV ${it.roundToInt()}" } ?: "HRV —",
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.primary,
+            )
             Text(snapshot.signalMessage, color = if (snapshot.signalMessage == "Signal good") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error)
         }
     }
@@ -786,6 +791,10 @@ private fun SummaryScreen(
             MetricCard("Resonance", observation?.score?.roundToInt()?.toString() ?: "—", Modifier.weight(1f))
             MetricCard("Usable data", observation?.let { "${(it.usableDataFraction * 100).roundToInt()}%" } ?: "—", Modifier.weight(1f))
         }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            MetricCard("HRV score", snapshot.completedHrv?.score?.roundToInt()?.toString() ?: "—", Modifier.weight(1f))
+            MetricCard("RMSSD", snapshot.completedHrv?.rmssdMs?.let { "${"%.1f".format(it)} ms" } ?: "—", Modifier.weight(1f))
+        }
         observation?.rejectionReason?.let { InformationCard("Low-confidence summary", it) }
         Text("How easy was this pace?", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -856,7 +865,7 @@ private fun HistoryScreen(
                                 }
                                 Text("${"%.1f".format(session.finalRate)} bpm", color = MaterialTheme.colorScheme.primary)
                             }
-                            Text("${formatDuration(session.durationSeconds)} · score ${session.resonanceScore?.roundToInt() ?: "—"} · ease ${session.ease ?: "—"}")
+                            Text("${formatDuration(session.durationSeconds)} · resonance ${session.resonanceScore?.roundToInt() ?: "—"} · HRV ${session.eliteHrvScore?.roundToInt() ?: "—"} · ease ${session.ease ?: "—"}")
                             Row {
                                 ExportButton(session.id, exporter)
                                 IconButton(onClick = { onDelete(session.id) }) { Icon(Icons.Default.Delete, "Delete session") }

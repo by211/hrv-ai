@@ -15,6 +15,8 @@ import quest.byai.hrv.domain.SessionType
 import quest.byai.hrv.domain.UserFeedback
 import quest.byai.hrv.signal.ResonanceAnalyzer
 import quest.byai.hrv.signal.RrArtifactClassifier
+import quest.byai.hrv.signal.EliteHrvCalculator
+import quest.byai.hrv.signal.EliteHrvResult
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
@@ -28,6 +30,8 @@ data class SessionSnapshot(
     val currentRate: Double = 6.0,
     val inhaleFraction: Double = 0.5,
     val currentHeartRate: Int? = null,
+    val liveHrv: EliteHrvResult? = null,
+    val completedHrv: EliteHrvResult? = null,
     val rrAvailable: Boolean = false,
     val contactStatus: Boolean? = null,
     val signalMessage: String = "Waiting for R-R intervals",
@@ -42,6 +46,7 @@ class SessionEngine(
     private val preferences: AppPreferences,
     private val artifactClassifier: RrArtifactClassifier = RrArtifactClassifier(),
     private val analyzer: ResonanceAnalyzer = ResonanceAnalyzer(),
+    private val eliteHrvCalculator: EliteHrvCalculator = EliteHrvCalculator(),
     private val controller: AdaptiveBreathingController = AdaptiveBreathingController(),
     private val timestampReconstructor: RrTimestampReconstructor = RrTimestampReconstructor(),
 ) {
@@ -116,6 +121,7 @@ class SessionEngine(
             emptyList()
         }
         rawRrSamples += reconstructed
+        val liveHrv = eliteHrvCalculator.calculateLive(rawRrSamples.map { it.rawRrMs.toDouble() })
         val classified = artifactClassifier.classify(rawRrSamples).takeLast(reconstructed.size)
         repository.addRrSamples(
             sessionId = sessionId,
@@ -141,6 +147,7 @@ class SessionEngine(
         mutableSnapshot.value = current.copy(
             status = status,
             currentHeartRate = notification.heartRateBpm,
+            liveHrv = liveHrv,
             rrAvailable = notification.rrAvailable,
             contactStatus = notification.contactStatus,
             signalMessage = signalMessage,
@@ -297,6 +304,7 @@ class SessionEngine(
         val durationSeconds = (activeElapsedMs / 1_000L)
             .coerceAtMost(current.targetDurationSeconds)
         val classified = artifactClassifier.classify(rawRrSamples)
+        val completedHrv = eliteHrvCalculator.calculateCompleted(rawRrSamples.map { it.rawRrMs.toDouble() })
         val summaryObservation = current.latestObservation ?: analyzer.analyze(
             classified,
             BreathingCue(current.currentRate, current.inhaleFraction),
@@ -314,6 +322,7 @@ class SessionEngine(
             durationSeconds = durationSeconds,
             averageHeartRate = heartRates.takeIf { it.isNotEmpty() }?.average(),
             observation = summaryObservation,
+            eliteHrv = completedHrv,
             feedback = null,
             cancelled = cancelled,
         )
@@ -321,6 +330,8 @@ class SessionEngine(
             status = if (cancelled) SessionStatus.CANCELLED else SessionStatus.COMPLETE,
             elapsedSeconds = durationSeconds,
             latestObservation = summaryObservation,
+            liveHrv = completedHrv ?: current.liveHrv,
+            completedHrv = completedHrv,
             controllerMessage = if (cancelled) "Session ended early" else "Session complete",
             isActive = false,
         )

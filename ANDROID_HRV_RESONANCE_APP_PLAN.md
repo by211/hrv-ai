@@ -75,7 +75,7 @@ The H9 does not provide H10's optional dual-Bluetooth mode, so connection troubl
 3. Run a continuous pacer with live HR and a subtle quality indicator.
 4. Pause pace evaluation on poor signal; do not turn artifacts into positive feedback.
 5. End with an ease score and optional symptom flags.
-6. Show a restrained summary: duration, followed rate, HR range, usable-data percentage, session RMSSD, oscillation amplitude, regularity, and resonance score.
+6. Show a restrained summary: duration, followed rate, HR range, usable-data percentage, artifact-corrected RMSSD, lnRMSSD-based HRV score, oscillation amplitude, regularity, and resonance score.
 
 ### C. Initial calibration
 

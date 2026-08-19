@@ -1,0 +1,424 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 2,
+    "identityHash": "fe96159f1357a8a629eec730ac9b283f",
+    "entities": [
+      {
+        "tableName": "sessions",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `type` TEXT NOT NULL, `startedAtEpochMs` INTEGER NOT NULL, `endedAtEpochMs` INTEGER, `status` TEXT NOT NULL, `initialRate` REAL NOT NULL, `finalRate` REAL NOT NULL, `inhaleFraction` REAL NOT NULL, `durationSeconds` INTEGER NOT NULL, `averageHeartRate` REAL, `rmssdMs` REAL, `sdnnMs` REAL, `eliteHrvScore` REAL, `lnRmssd` REAL, `eliteArtifactPercent` REAL, `resonanceScore` REAL, `confidence` REAL, `usableDataFraction` REAL, `ease` INTEGER, `symptomFlags` TEXT NOT NULL, `notes` TEXT NOT NULL, `analysisVersion` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "type",
+            "columnName": "type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "startedAtEpochMs",
+            "columnName": "startedAtEpochMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "endedAtEpochMs",
+            "columnName": "endedAtEpochMs",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "initialRate",
+            "columnName": "initialRate",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "finalRate",
+            "columnName": "finalRate",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "inhaleFraction",
+            "columnName": "inhaleFraction",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "durationSeconds",
+            "columnName": "durationSeconds",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "averageHeartRate",
+            "columnName": "averageHeartRate",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "rmssdMs",
+            "columnName": "rmssdMs",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "sdnnMs",
+            "columnName": "sdnnMs",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "eliteHrvScore",
+            "columnName": "eliteHrvScore",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "lnRmssd",
+            "columnName": "lnRmssd",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "eliteArtifactPercent",
+            "columnName": "eliteArtifactPercent",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "resonanceScore",
+            "columnName": "resonanceScore",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "confidence",
+            "columnName": "confidence",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "usableDataFraction",
+            "columnName": "usableDataFraction",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "ease",
+            "columnName": "ease",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "symptomFlags",
+            "columnName": "symptomFlags",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "notes",
+            "columnName": "notes",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "analysisVersion",
+            "columnName": "analysisVersion",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "rr_samples",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `sessionId` INTEGER NOT NULL, `elapsedRealtimeMs` INTEGER NOT NULL, `rawRrMs` INTEGER NOT NULL, `analysisRrMs` REAL, `qualityFlags` TEXT NOT NULL, `heartRateBpm` INTEGER NOT NULL, `contactStatus` INTEGER, FOREIGN KEY(`sessionId`) REFERENCES `sessions`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sessionId",
+            "columnName": "sessionId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "elapsedRealtimeMs",
+            "columnName": "elapsedRealtimeMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rawRrMs",
+            "columnName": "rawRrMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "analysisRrMs",
+            "columnName": "analysisRrMs",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "qualityFlags",
+            "columnName": "qualityFlags",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "heartRateBpm",
+            "columnName": "heartRateBpm",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "contactStatus",
+            "columnName": "contactStatus",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_rr_samples_sessionId",
+            "unique": false,
+            "columnNames": [
+              "sessionId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_rr_samples_sessionId` ON `${TABLE_NAME}` (`sessionId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "sessions",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "sessionId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "breathing_segments",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `sessionId` INTEGER NOT NULL, `startedAtElapsedMs` INTEGER NOT NULL, `endedAtElapsedMs` INTEGER, `breathsPerMinute` REAL NOT NULL, `inhaleFraction` REAL NOT NULL, `controllerAction` TEXT NOT NULL, `reason` TEXT NOT NULL, FOREIGN KEY(`sessionId`) REFERENCES `sessions`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sessionId",
+            "columnName": "sessionId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "startedAtElapsedMs",
+            "columnName": "startedAtElapsedMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "endedAtElapsedMs",
+            "columnName": "endedAtElapsedMs",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "breathsPerMinute",
+            "columnName": "breathsPerMinute",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "inhaleFraction",
+            "columnName": "inhaleFraction",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "controllerAction",
+            "columnName": "controllerAction",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reason",
+            "columnName": "reason",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_breathing_segments_sessionId",
+            "unique": false,
+            "columnNames": [
+              "sessionId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_breathing_segments_sessionId` ON `${TABLE_NAME}` (`sessionId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "sessions",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "sessionId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "analysis_windows",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `sessionId` INTEGER NOT NULL, `endedAtElapsedMs` INTEGER NOT NULL, `breathsPerMinute` REAL NOT NULL, `score` REAL NOT NULL, `confidence` REAL NOT NULL, `targetAmplitudeBpm` REAL NOT NULL, `regularity` REAL NOT NULL, `spectralConcentration` REAL NOT NULL, `dominantFrequencyHz` REAL NOT NULL, `usableDataFraction` REAL NOT NULL, `qualified` INTEGER NOT NULL, `rejectionReason` TEXT, FOREIGN KEY(`sessionId`) REFERENCES `sessions`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sessionId",
+            "columnName": "sessionId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "endedAtElapsedMs",
+            "columnName": "endedAtElapsedMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "breathsPerMinute",
+            "columnName": "breathsPerMinute",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "score",
+            "columnName": "score",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "confidence",
+            "columnName": "confidence",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "targetAmplitudeBpm",
+            "columnName": "targetAmplitudeBpm",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "regularity",
+            "columnName": "regularity",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "spectralConcentration",
+            "columnName": "spectralConcentration",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dominantFrequencyHz",
+            "columnName": "dominantFrequencyHz",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "usableDataFraction",
+            "columnName": "usableDataFraction",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "qualified",
+            "columnName": "qualified",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rejectionReason",
+            "columnName": "rejectionReason",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_analysis_windows_sessionId",
+            "unique": false,
+            "columnNames": [
+              "sessionId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_analysis_windows_sessionId` ON `${TABLE_NAME}` (`sessionId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "sessions",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "sessionId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'fe96159f1357a8a629eec730ac9b283f')"
+    ]
+  }
+}

@@ -23,7 +23,7 @@ class AppContainer(application: Application) {
         application,
         ResonanceDatabase::class.java,
         "resonance.db",
-    ).build()
+    ).addMigrations(ResonanceDatabase.MIGRATION_1_2).build()
 
     val preferences = AppPreferences(application)
     val repository = SessionRepository(database.resonanceDao())

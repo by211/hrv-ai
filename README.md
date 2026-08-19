@@ -21,6 +21,7 @@ See [FEATURES.md](FEATURES.md) for the implemented feature inventory, real-time 
 - R-R timestamp reconstruction for BLE notifications containing multiple intervals.
 - Physiological range and local-median artifact classification, limited interpolation, contact-loss flags, and BLE-gap flags.
 - 4 Hz resampling, linear detrending, target-frequency sine fit, amplitude, waveform regularity, spectral concentration, dominant frequency, RMSSD, SDNN, confidence, and versioned composite scoring.
+- Elite HRV-compatible rolling 15-second RMSSD/lnRMSSD display and completed-session 1–100 HRV score, stored independently from the resonance score.
 - Bounded adaptive controller with 0.2 breaths/min exploration, 0.1 fine exploration, confidence gating, a three-point improvement margin, hysteresis through an accepted baseline, bounds of 4.5–7.0 breaths/min, and discomfort reversion.
 - A 30-second settling period and 75-second evaluation window after each adaptive pace change.
 - Room persistence for sessions, raw/corrected R-R values, breathing segments, analysis windows, controller reasons, ease, and symptoms.

@@ -6,6 +6,7 @@ import quest.byai.hrv.domain.SessionStatus
 import quest.byai.hrv.domain.SessionType
 import quest.byai.hrv.domain.UserFeedback
 import kotlinx.coroutines.flow.Flow
+import quest.byai.hrv.signal.EliteHrvResult
 
 class SessionRepository(private val dao: ResonanceDao) {
     val sessions: Flow<List<SessionEntity>> = dao.observeSessions()
@@ -88,6 +89,7 @@ class SessionRepository(private val dao: ResonanceDao) {
         durationSeconds: Long,
         averageHeartRate: Double?,
         observation: ResonanceObservation?,
+        eliteHrv: EliteHrvResult?,
         feedback: UserFeedback?,
         cancelled: Boolean = false,
     ) {
@@ -99,8 +101,11 @@ class SessionRepository(private val dao: ResonanceDao) {
                 finalRate = finalRate,
                 durationSeconds = durationSeconds,
                 averageHeartRate = averageHeartRate,
-                rmssdMs = observation?.rmssdMs,
-                sdnnMs = observation?.sdnnMs,
+                rmssdMs = eliteHrv?.rmssdMs ?: observation?.rmssdMs,
+                sdnnMs = eliteHrv?.sdnnMs ?: observation?.sdnnMs,
+                eliteHrvScore = eliteHrv?.unroundedScore,
+                lnRmssd = eliteHrv?.lnRmssd,
+                eliteArtifactPercent = eliteHrv?.artifactPercent,
                 resonanceScore = observation?.score,
                 confidence = observation?.confidence,
                 usableDataFraction = observation?.usableDataFraction,
@@ -128,6 +133,11 @@ class SessionRepository(private val dao: ResonanceDao) {
             appendLine("# type,${session.type}")
             appendLine("# started_epoch_ms,${session.startedAtEpochMs}")
             appendLine("# analysis_version,${session.analysisVersion}")
+            appendLine("# elite_hrv_score,${session.eliteHrvScore ?: ""}")
+            appendLine("# ln_rmssd,${session.lnRmssd ?: ""}")
+            appendLine("# rmssd_ms,${session.rmssdMs ?: ""}")
+            appendLine("# sdnn_ms,${session.sdnnMs ?: ""}")
+            appendLine("# elite_artifact_percent,${session.eliteArtifactPercent ?: ""}")
             appendLine("elapsed_ms,raw_rr_ms,analysis_rr_ms,quality_flags,heart_rate_bpm,contact_status")
             samples.forEach { sample ->
                 appendLine(
