@@ -8,6 +8,8 @@ The app reads beat-to-beat R-R intervals through Polar's BLE Heart Rate service,
 
 See [ANDROID_HRV_RESONANCE_APP_PLAN.md](ANDROID_HRV_RESONANCE_APP_PLAN.md) for the product rationale, phased validation plan, and definition of done.
 
+See [FEATURES.md](FEATURES.md) for the implemented feature inventory, real-time calculation behavior, and current validation boundary.
+
 ## Implemented
 
 - Standard BLE Heart Rate Service discovery, explicit selection, saved-device reconnect, HR/R-R streaming, contact state, battery state, and error reporting, tested primarily with Polar H9.
