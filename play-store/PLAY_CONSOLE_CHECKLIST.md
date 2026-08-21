@@ -6,7 +6,7 @@
 - Play Console app: Created as `HRV AI`.
 - Website: Leave blank; HRV AI is an Android-only product.
 - Privacy policy: `https://by211.github.io/hrv-ai/privacy-policy.html` (published and verified).
-- Current internal-test version: `0.1.3` (`versionCode` 4)
+- Current internal-test version: `0.1.4` (`versionCode` 5)
 
 Treat the application ID and public app name as permanent now that the Play Console app exists.
 

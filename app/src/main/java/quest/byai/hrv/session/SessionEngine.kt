@@ -55,6 +55,8 @@ class SessionEngine(
         const val EVALUATION_DURATION_MS = 75_000L
         const val SIGNAL_TIMEOUT_MS = 3_000L
         const val MAX_WAVEFORM_POINTS = 90
+        const val HRV_MEASUREMENT_INTERVAL_MS = 2_000L
+        const val LIVE_HRV_WINDOW_MS = 15_000L
     }
 
     private val mutableSnapshot = MutableStateFlow(SessionSnapshot())
@@ -66,6 +68,7 @@ class SessionEngine(
     private var evaluationWindowStartedAtMs: Long = 0
     private var settleUntilElapsedMs: Long = 0
     private var pausedAtElapsedMs: Long? = null
+    private var lastHrvMeasurementElapsedMs: Long? = null
 
     suspend fun start(
         type: SessionType,
@@ -89,6 +92,7 @@ class SessionEngine(
         timestampReconstructor.reset()
         controllerState = ControllerState(acceptedRate = rate, commandedRate = rate)
         pausedAtElapsedMs = null
+        lastHrvMeasurementElapsedMs = null
         settleUntilElapsedMs = now + SETTLING_DURATION_MS
         evaluationWindowStartedAtMs = settleUntilElapsedMs
         mutableSnapshot.value = SessionSnapshot(
@@ -122,6 +126,20 @@ class SessionEngine(
         }
         rawRrSamples += reconstructed
         val liveHrv = eliteHrvCalculator.calculateLive(rawRrSamples.map { it.rawRrMs.toDouble() })
+        val measurementElapsedMs = (
+            notification.receivedElapsedRealtimeNanos / 1_000_000L - current.startedAtElapsedMs
+            ).coerceAtLeast(0L)
+        val shouldPersistHrvMeasurement = lastHrvMeasurementElapsedMs == null ||
+            measurementElapsedMs - requireNotNull(lastHrvMeasurementElapsedMs) >= HRV_MEASUREMENT_INTERVAL_MS
+        if (liveHrv != null && shouldPersistHrvMeasurement) {
+            repository.addHrvMeasurement(
+                sessionId = sessionId,
+                elapsedMs = measurementElapsedMs,
+                windowDurationMs = LIVE_HRV_WINDOW_MS,
+                hrv = liveHrv,
+            )
+            lastHrvMeasurementElapsedMs = measurementElapsedMs
+        }
         val classified = artifactClassifier.classify(rawRrSamples).takeLast(reconstructed.size)
         repository.addRrSamples(
             sessionId = sessionId,

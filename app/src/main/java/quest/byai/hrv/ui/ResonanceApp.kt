@@ -5,8 +5,6 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.media.AudioManager
-import android.media.ToneGenerator
 import android.os.Build
 import android.os.SystemClock
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -49,7 +47,6 @@ import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
@@ -100,6 +97,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.Lifecycle
 import quest.byai.hrv.data.SessionEntity
+import quest.byai.hrv.data.BreathingSoundStyle
 import quest.byai.hrv.data.UserSettings
 import quest.byai.hrv.domain.SensorConnectionState
 import quest.byai.hrv.domain.SensorDevice
@@ -110,11 +108,16 @@ import quest.byai.hrv.session.SessionSnapshot
 import quest.byai.hrv.sensor.SensorDiagnostics
 import quest.byai.hrv.R
 import quest.byai.hrv.BuildConfig
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import kotlin.math.roundToInt
+
+private const val PREPARATION_BREATH_COUNT = 3
+private const val PREPARATION_RATE = 6.0
+private const val PREPARATION_INHALE_FRACTION = 0.4
 
 @Composable
 fun ResonanceApp(viewModel: MainViewModel) {
@@ -187,8 +190,14 @@ fun ResonanceApp(viewModel: MainViewModel) {
                 onRate = { viewModel.updateDraft(rate = it) },
                 onDuration = { viewModel.updateDraft(durationSeconds = it) },
                 onRatio = { viewModel.updateDraft(inhaleFraction = it) },
-                onStart = viewModel::startSession,
+                onPreparationBreaths = { viewModel.updateDraft(preparationBreathsEnabled = it) },
+                onStart = viewModel::beginSession,
                 onSensor = { viewModel.navigate(AppScreen.SENSOR) },
+            )
+            AppScreen.PREPARATION -> PreparationBreathsScreen(
+                settings = settings,
+                onCancel = viewModel::cancelPreparation,
+                onComplete = viewModel::startSession,
             )
             AppScreen.CALIBRATION -> CalibrationScreen(
                 sessions = viewModel.calibrationSessions(),
@@ -211,6 +220,7 @@ fun ResonanceApp(viewModel: MainViewModel) {
                 sessions = sessions,
                 onBack = { viewModel.navigate(AppScreen.HOME) },
                 exporter = viewModel::exportSession,
+                historyExporter = viewModel::exportAllHistory,
                 onDelete = viewModel::deleteSession,
             )
             AppScreen.SETTINGS -> SettingsScreen(
@@ -218,6 +228,7 @@ fun ResonanceApp(viewModel: MainViewModel) {
                 connected = connectionState == SensorConnectionState.STREAMING,
                 onBack = { viewModel.navigate(AppScreen.HOME) },
                 onSound = viewModel::setSoundEnabled,
+                onSoundStyle = viewModel::setSoundStyle,
                 onHaptics = viewModel::setHapticsEnabled,
                 onDisconnect = viewModel::disconnectSensor,
                 onDeleteAll = viewModel::deleteAllData,
@@ -331,10 +342,11 @@ private fun HomeScreen(
                 )
             }
             item {
-                InformationCard(
-                    "A good response is not just a big HRV number",
-                    "The app looks for a large, regular heart-rate wave concentrated near the breathing cue, and ignores windows with poor signal.",
-                )
+                OutlinedButton(onClick = onHistory, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Default.History, null, Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("View session history")
+                }
             }
         }
     }
@@ -516,6 +528,7 @@ private fun buildSensorDiagnosticReport(
     batteryLevel: Int?,
 ): String = buildString {
     appendLine("HRV AI ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
+    appendLine("Commit: ${BuildConfig.GIT_COMMIT_ID}")
     appendLine("Phone: ${Build.MANUFACTURER} ${Build.MODEL}; Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})")
     appendLine("State: ${connectionState.name}")
     appendLine("Device: ${diagnostics.selectedDeviceName ?: "unknown"} (${diagnostics.selectedDeviceId ?: "none"})")
@@ -537,6 +550,7 @@ private fun SessionSetupScreen(
     onRate: (Double) -> Unit,
     onDuration: (Long) -> Unit,
     onRatio: (Double) -> Unit,
+    onPreparationBreaths: (Boolean) -> Unit,
     onStart: () -> Unit,
     onSensor: () -> Unit,
 ) {
@@ -546,7 +560,7 @@ private fun SessionSetupScreen(
             verticalArrangement = Arrangement.spacedBy(22.dp),
         ) {
             if (draft.type == SessionType.ADAPTIVE) {
-                InformationCard("Slow adaptation", "The app waits for a qualified response before testing 0.1–0.2 breaths/minute nearby. It holds steady when confidence is low.")
+                Text("First rhythm estimate in about 1:45 · first pace comparison in about 3:30 with a good signal")
             }
             SettingSection("Starting rate", "${"%.1f".format(draft.rate)} breaths/min") {
                 Slider(
@@ -559,7 +573,12 @@ private fun SessionSetupScreen(
             }
             SettingSection("Session length", "${draft.durationSeconds / 60} minutes") {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf(3L, 5L, 10L, 15L).forEach { minutes ->
+                    val availableDurations = if (draft.type == SessionType.ADAPTIVE) {
+                        listOf(5L, 10L, 15L)
+                    } else {
+                        listOf(3L, 5L, 10L, 15L)
+                    }
+                    availableDurations.forEach { minutes ->
                         AssistChip(
                             onClick = { onDuration(minutes * 60) },
                             label = { Text("$minutes min") },
@@ -576,6 +595,12 @@ private fun SessionSetupScreen(
                     OutlinedButton(onClick = { onRatio(0.4) }) { Text("40 / 60") }
                 }
             }
+            SwitchRow(
+                title = "Preparation breaths",
+                description = "Take 3 slow, comfortable deep breaths before the timed practice starts",
+                checked = draft.preparationBreathsEnabled,
+                onChecked = onPreparationBreaths,
+            )
             Spacer(Modifier.weight(1f, fill = false))
             if (!connected) {
                 InformationCard("Sensor required", "Connect a Polar H9 and confirm that R-R intervals are streaming before starting.")
@@ -644,6 +669,57 @@ private fun CalibrationScreen(
 }
 
 @Composable
+private fun PreparationBreathsScreen(
+    settings: UserSettings,
+    onCancel: () -> Unit,
+    onComplete: () -> Unit,
+) {
+    val view = LocalView.current
+    val startedAtElapsedMs = remember { SystemClock.elapsedRealtime() }
+    val cycleDurationMs = (60_000.0 / PREPARATION_RATE).toLong()
+    val preparationDurationMs = cycleDurationMs * PREPARATION_BREATH_COUNT
+    val nowElapsedMs by produceState(startedAtElapsedMs) {
+        while (true) withFrameNanos { value = SystemClock.elapsedRealtime() }
+    }
+    val completedBreaths = ((nowElapsedMs - startedAtElapsedMs) / cycleDurationMs)
+        .toInt()
+        .coerceIn(0, PREPARATION_BREATH_COUNT - 1)
+
+    DisposableEffect(Unit) {
+        view.keepScreenOn = true
+        onDispose { view.keepScreenOn = false }
+    }
+    LaunchedEffect(Unit) {
+        delay(preparationDurationMs)
+        onComplete()
+    }
+
+    Column(
+        Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Text("Prepare", style = MaterialTheme.typography.titleMedium)
+            TextButton(onClick = onCancel) { Text("Cancel") }
+        }
+        Spacer(Modifier.height(24.dp))
+        Text("Take 3 comfortable deep breaths", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+        Text("Breath ${completedBreaths + 1} of $PREPARATION_BREATH_COUNT", color = MaterialTheme.colorScheme.secondary)
+        Spacer(Modifier.weight(1f))
+        BreathingPacer(
+            rate = PREPARATION_RATE,
+            inhaleFraction = PREPARATION_INHALE_FRACTION,
+            hapticsEnabled = settings.hapticsEnabled,
+            soundEnabled = settings.soundEnabled,
+            soundStyle = settings.soundStyle,
+            startedAtElapsedMs = startedAtElapsedMs,
+        )
+        Spacer(Modifier.weight(1f))
+        Text("Your timed practice starts automatically", color = MaterialTheme.colorScheme.secondary)
+    }
+}
+
+@Composable
 private fun ActiveSessionScreen(
     snapshot: SessionSnapshot,
     settings: UserSettings,
@@ -678,6 +754,8 @@ private fun ActiveSessionScreen(
             inhaleFraction = snapshot.inhaleFraction,
             hapticsEnabled = settings.hapticsEnabled,
             soundEnabled = settings.soundEnabled,
+            soundStyle = settings.soundStyle,
+            startedAtElapsedMs = snapshot.startedAtElapsedMs,
         )
         Spacer(Modifier.weight(0.5f))
         Text("${"%.1f".format(snapshot.currentRate)} breaths/min", style = MaterialTheme.typography.titleMedium)
@@ -702,31 +780,30 @@ private fun BreathingPacer(
     inhaleFraction: Double,
     hapticsEnabled: Boolean,
     soundEnabled: Boolean,
+    soundStyle: BreathingSoundStyle,
+    startedAtElapsedMs: Long,
 ) {
-    val nowElapsedMs by produceState(SystemClock.elapsedRealtime(), rate, inhaleFraction) {
+    val nowElapsedMs by produceState(SystemClock.elapsedRealtime(), rate, inhaleFraction, startedAtElapsedMs) {
         while (true) {
             withFrameNanos { value = SystemClock.elapsedRealtime() }
         }
     }
     val cycleMs = 60_000.0 / rate
-    val phase = (nowElapsedMs % cycleMs) / cycleMs
+    val phase = ((nowElapsedMs - startedAtElapsedMs).coerceAtLeast(0) % cycleMs) / cycleMs
     val inhaling = phase < inhaleFraction
     val rawExpansion = if (inhaling) phase / inhaleFraction else 1.0 - (phase - inhaleFraction) / (1.0 - inhaleFraction)
     val easedExpansion = rawExpansion * rawExpansion * (3.0 - 2.0 * rawExpansion)
     val size = (150.0 + 120.0 * easedExpansion).dp
     val label = if (inhaling) "Inhale" else "Exhale"
     val haptics = LocalHapticFeedback.current
-    val toneGenerator = remember { ToneGenerator(AudioManager.STREAM_MUSIC, 35) }
-    var previousLabel by remember { mutableStateOf(label) }
-    DisposableEffect(Unit) { onDispose { toneGenerator.release() } }
-    LaunchedEffect(label) {
-        if (label != previousLabel) {
+    val soundPlayer = remember(soundStyle) { runCatching { BreathingSoundPlayer(soundStyle) }.getOrNull() }
+    var previousInhaling by remember { mutableStateOf<Boolean?>(null) }
+    DisposableEffect(soundPlayer) { onDispose { soundPlayer?.release() } }
+    LaunchedEffect(inhaling) {
+        if (inhaling != previousInhaling) {
             if (hapticsEnabled) haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-            if (soundEnabled) toneGenerator.startTone(
-                if (inhaling) ToneGenerator.TONE_PROP_BEEP else ToneGenerator.TONE_PROP_BEEP2,
-                120,
-            )
-            previousLabel = label
+            if (soundEnabled) runCatching { soundPlayer?.play(inhaling) }
+            previousInhaling = inhaling
         }
     }
     Box(
@@ -771,10 +848,6 @@ private fun SummaryScreen(
     exporter: suspend (Long) -> String,
 ) {
     var ease by remember { mutableIntStateOf(3) }
-    var dizzy by remember { mutableStateOf(false) }
-    var tingling by remember { mutableStateOf(false) }
-    var airHunger by remember { mutableStateOf(false) }
-    var pounding by remember { mutableStateOf(false) }
     val observation = snapshot.latestObservation
 
     Column(
@@ -804,15 +877,10 @@ private fun SummaryScreen(
                 }
             }
         }
-        Text("Any discomfort?", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-        FeedbackCheck("Dizziness", dizzy) { dizzy = it }
-        FeedbackCheck("Tingling", tingling) { tingling = it }
-        FeedbackCheck("Air hunger", airHunger) { airHunger = it }
-        FeedbackCheck("Pounding heart", pounding) { pounding = it }
         snapshot.sessionId?.let { ExportButton(it, exporter, Modifier.fillMaxWidth()) }
         Button(
             onClick = {
-                onDone(UserFeedback(ease, dizzy, tingling, airHunger, pounding))
+                onDone(UserFeedback(ease))
             },
             modifier = Modifier.fillMaxWidth(),
         ) { Text("Save and continue") }
@@ -830,31 +898,32 @@ private fun MetricCard(label: String, value: String, modifier: Modifier = Modifi
 }
 
 @Composable
-private fun FeedbackCheck(label: String, checked: Boolean, onChecked: (Boolean) -> Unit) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Checkbox(checked, onChecked)
-        Text(label)
-    }
-}
-
-@Composable
 private fun HistoryScreen(
     sessions: List<SessionEntity>,
     onBack: () -> Unit,
     exporter: suspend (Long) -> String,
+    historyExporter: suspend () -> ByteArray,
     onDelete: (Long) -> Unit,
 ) {
     ScreenScaffold("History", onBack) { padding ->
-        if (sessions.isEmpty()) {
-            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                Text("No sessions yet", color = MaterialTheme.colorScheme.secondary)
+        LazyColumn(
+            Modifier.fillMaxSize().padding(padding),
+            contentPadding = PaddingValues(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            item {
+                FullHistoryExportButton(historyExporter, Modifier.fillMaxWidth())
             }
-        } else {
-            LazyColumn(
-                Modifier.fillMaxSize().padding(padding),
-                contentPadding = PaddingValues(20.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
+            if (sessions.isEmpty()) {
+                item {
+                    Text(
+                        "No sessions yet",
+                        color = MaterialTheme.colorScheme.secondary,
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            } else {
                 items(sessions, key = { it.id }) { session ->
                     Card(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -875,6 +944,36 @@ private fun HistoryScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun FullHistoryExportButton(
+    exporter: suspend () -> ByteArray,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var archive by remember { mutableStateOf(ByteArray(0)) }
+    val launcher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/zip"),
+    ) { uri ->
+        if (uri != null && archive.isNotEmpty()) {
+            context.contentResolver.openOutputStream(uri)?.use { output -> output.write(archive) }
+        }
+    }
+    Button(
+        onClick = {
+            scope.launch {
+                archive = exporter()
+                launcher.launch("hrv-ai-complete-history.zip")
+            }
+        },
+        modifier = modifier,
+    ) {
+        Icon(Icons.Default.Download, null, Modifier.size(18.dp))
+        Spacer(Modifier.width(8.dp))
+        Text("Export complete history")
     }
 }
 
@@ -913,6 +1012,7 @@ private fun SettingsScreen(
     connected: Boolean,
     onBack: () -> Unit,
     onSound: (Boolean) -> Unit,
+    onSoundStyle: (BreathingSoundStyle) -> Unit,
     onHaptics: (Boolean) -> Unit,
     onDisconnect: () -> Unit,
     onDeleteAll: () -> Unit,
@@ -925,7 +1025,22 @@ private fun SettingsScreen(
             Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            SwitchRow("Sound cues", "A short tone at inhale and exhale transitions", settings.soundEnabled, onSound)
+            SwitchRow("Peaceful sound cues", "Different sounds mark inhale and exhale", settings.soundEnabled, onSound)
+            if (settings.soundEnabled) {
+                SettingSection("Sound style", settings.soundStyle.displayName) {
+                    BreathingSoundStyle.entries.forEach { style ->
+                        if (style == settings.soundStyle) {
+                            FilledTonalButton(onClick = { onSoundStyle(style) }, modifier = Modifier.fillMaxWidth()) {
+                                Text(style.displayName)
+                            }
+                        } else {
+                            OutlinedButton(onClick = { onSoundStyle(style) }, modifier = Modifier.fillMaxWidth()) {
+                                Text(style.displayName)
+                            }
+                        }
+                    }
+                }
+            }
             SwitchRow("Haptic cues", "A subtle phone vibration at phase transitions", settings.hapticsEnabled, onHaptics)
             HorizontalDivider(Modifier.padding(vertical = 8.dp))
             Text("Sensor", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
@@ -948,7 +1063,7 @@ private fun SettingsScreen(
                 Spacer(Modifier.width(8.dp))
                 Text("Delete all session data")
             }
-            InformationCard("Version 0.1", "Analysis version 1. This is an experimental wellness and biofeedback app, not a medical device.")
+            Text("Version ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE}) · commit ${BuildConfig.GIT_COMMIT_ID}")
         }
     }
     if (confirmDelete) {

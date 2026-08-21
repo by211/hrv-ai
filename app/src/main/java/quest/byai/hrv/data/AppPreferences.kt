@@ -16,8 +16,15 @@ data class UserSettings(
     val savedDeviceId: String? = null,
     val preferredRate: Double = 6.0,
     val soundEnabled: Boolean = false,
+    val soundStyle: BreathingSoundStyle = BreathingSoundStyle.GENTLE_CHIMES,
     val hapticsEnabled: Boolean = true,
 )
+
+enum class BreathingSoundStyle(val displayName: String) {
+    GENTLE_CHIMES("Gentle chimes"),
+    OCEAN_SWELL("Ocean swell"),
+    SINGING_BOWLS("Singing bowls"),
+}
 
 class AppPreferences(private val context: Context) {
     private object Keys {
@@ -25,6 +32,7 @@ class AppPreferences(private val context: Context) {
         val savedDeviceId = stringPreferencesKey("saved_device_id")
         val preferredRate = doublePreferencesKey("preferred_rate")
         val soundEnabled = booleanPreferencesKey("sound_enabled")
+        val soundStyle = stringPreferencesKey("sound_style")
         val hapticsEnabled = booleanPreferencesKey("haptics_enabled")
     }
 
@@ -34,6 +42,9 @@ class AppPreferences(private val context: Context) {
             savedDeviceId = values[Keys.savedDeviceId],
             preferredRate = values[Keys.preferredRate] ?: 6.0,
             soundEnabled = values[Keys.soundEnabled] ?: false,
+            soundStyle = values[Keys.soundStyle]
+                ?.let { savedStyle -> BreathingSoundStyle.entries.find { it.name == savedStyle } }
+                ?: BreathingSoundStyle.GENTLE_CHIMES,
             hapticsEnabled = values[Keys.hapticsEnabled] ?: true,
         )
     }
@@ -43,5 +54,6 @@ class AppPreferences(private val context: Context) {
     suspend fun clearDevice() = context.dataStore.edit { it.remove(Keys.savedDeviceId) }
     suspend fun savePreferredRate(rate: Double) = context.dataStore.edit { it[Keys.preferredRate] = rate }
     suspend fun setSoundEnabled(enabled: Boolean) = context.dataStore.edit { it[Keys.soundEnabled] = enabled }
+    suspend fun setSoundStyle(style: BreathingSoundStyle) = context.dataStore.edit { it[Keys.soundStyle] = style.name }
     suspend fun setHapticsEnabled(enabled: Boolean) = context.dataStore.edit { it[Keys.hapticsEnabled] = enabled }
 }

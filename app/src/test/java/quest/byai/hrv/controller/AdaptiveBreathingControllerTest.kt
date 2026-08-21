@@ -1,9 +1,7 @@
 package quest.byai.hrv.controller
 
 import quest.byai.hrv.domain.ResonanceObservation
-import quest.byai.hrv.domain.UserFeedback
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Test
 
 class AdaptiveBreathingControllerTest {
@@ -48,26 +46,6 @@ class AdaptiveBreathingControllerTest {
         assertEquals(ControllerAction.REVERT_AND_EXPLORE, worse.action)
         assertEquals(6.1, worse.nextRate, 0.001)
         assertEquals(0.1, worse.state.step, 0.001)
-    }
-
-    @Test
-    fun `discomfort returns to accepted rate`() {
-        val exploring = ControllerState(
-            acceptedRate = 6.0,
-            commandedRate = 5.8,
-            acceptedScore = 70.0,
-            pendingCandidate = true,
-        )
-
-        val decision = controller.next(
-            exploring,
-            observation(score = 80.0, rate = 5.8),
-            UserFeedback(ease = 2, dizzy = true),
-        )
-
-        assertEquals(ControllerAction.REVERT_FOR_COMFORT, decision.action)
-        assertEquals(6.0, decision.nextRate, 0.001)
-        assertFalse(decision.state.pendingCandidate)
     }
 
     private fun observation(

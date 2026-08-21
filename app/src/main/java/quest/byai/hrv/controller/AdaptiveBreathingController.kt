@@ -1,7 +1,6 @@
 package quest.byai.hrv.controller
 
 import quest.byai.hrv.domain.ResonanceObservation
-import quest.byai.hrv.domain.UserFeedback
 import kotlin.math.round
 
 data class ControllerConfig(
@@ -28,7 +27,6 @@ enum class ControllerAction {
     EXPLORE,
     ACCEPT_AND_EXPLORE,
     REVERT_AND_EXPLORE,
-    REVERT_FOR_COMFORT,
 }
 
 data class ControllerDecision(
@@ -44,21 +42,7 @@ class AdaptiveBreathingController(
     fun next(
         state: ControllerState,
         observation: ResonanceObservation,
-        userFeedback: UserFeedback? = null,
     ): ControllerDecision {
-        if (userFeedback != null && !userFeedback.isComfortable) {
-            val revertedState = state.copy(
-                commandedRate = state.acceptedRate,
-                pendingCandidate = false,
-            )
-            return ControllerDecision(
-                ControllerAction.REVERT_FOR_COMFORT,
-                state.acceptedRate,
-                "Returned to the established rate because the user reported discomfort",
-                revertedState,
-            )
-        }
-
         if (!observation.isQualified || observation.confidence < config.minimumConfidence) {
             return ControllerDecision(
                 ControllerAction.HOLD,

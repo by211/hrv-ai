@@ -90,14 +90,4 @@ enum class SessionStatus {
     CANCELLED,
 }
 
-data class UserFeedback(
-    val ease: Int,
-    val dizzy: Boolean = false,
-    val tingling: Boolean = false,
-    val airHunger: Boolean = false,
-    val poundingHeart: Boolean = false,
-    val otherDiscomfort: Boolean = false,
-) {
-    val isComfortable: Boolean
-        get() = ease >= 3 && !dizzy && !tingling && !airHunger && !poundingHeart && !otherDiscomfort
-}
+data class UserFeedback(val ease: Int)

@@ -28,7 +28,7 @@ data class SessionEntity(
     val ease: Int? = null,
     val symptomFlags: String = "",
     val notes: String = "",
-    val analysisVersion: Int = 2,
+    val analysisVersion: Int = 3,
 )
 
 @Entity(
@@ -97,4 +97,26 @@ data class AnalysisWindowEntity(
     val usableDataFraction: Double,
     val qualified: Boolean,
     val rejectionReason: String?,
+)
+
+@Entity(
+    tableName = "hrv_measurements",
+    foreignKeys = [ForeignKey(
+        entity = SessionEntity::class,
+        parentColumns = ["id"],
+        childColumns = ["sessionId"],
+        onDelete = ForeignKey.CASCADE,
+    )],
+    indices = [Index("sessionId")],
+)
+data class HrvMeasurementEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val sessionId: Long,
+    val elapsedRealtimeMs: Long,
+    val windowDurationMs: Long,
+    val rrIntervalCount: Int,
+    val rmssdMs: Double,
+    val lnRmssd: Double,
+    val displayedHrvScore: Double,
+    val unroundedHrvScore: Double,
 )

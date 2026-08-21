@@ -83,6 +83,26 @@ class SessionRepository(private val dao: ResonanceDao) {
         )
     }
 
+    suspend fun addHrvMeasurement(
+        sessionId: Long,
+        elapsedMs: Long,
+        windowDurationMs: Long,
+        hrv: EliteHrvResult,
+    ) {
+        dao.insertHrvMeasurement(
+            HrvMeasurementEntity(
+                sessionId = sessionId,
+                elapsedRealtimeMs = elapsedMs,
+                windowDurationMs = windowDurationMs,
+                rrIntervalCount = hrv.correctedRrMs.size,
+                rmssdMs = hrv.rmssdMs,
+                lnRmssd = hrv.lnRmssd,
+                displayedHrvScore = hrv.score,
+                unroundedHrvScore = hrv.unroundedScore,
+            ),
+        )
+    }
+
     suspend fun finishSession(
         sessionId: Long,
         finalRate: Double,
@@ -110,7 +130,7 @@ class SessionRepository(private val dao: ResonanceDao) {
                 confidence = observation?.confidence,
                 usableDataFraction = observation?.usableDataFraction,
                 ease = feedback?.ease,
-                symptomFlags = feedback?.let { symptomFlags(it) }.orEmpty(),
+                symptomFlags = "",
             ),
         )
     }
@@ -120,7 +140,7 @@ class SessionRepository(private val dao: ResonanceDao) {
         dao.updateSession(
             existing.copy(
                 ease = feedback.ease,
-                symptomFlags = symptomFlags(feedback),
+                symptomFlags = "",
             ),
         )
     }
@@ -154,15 +174,16 @@ class SessionRepository(private val dao: ResonanceDao) {
         }
     }
 
+    suspend fun exportAllHistory(): ByteArray = HistoryArchiveExporter.build(
+        sessions = dao.getAllSessions(),
+        rrSamples = dao.getAllRrSamples(),
+        hrvMeasurements = dao.getAllHrvMeasurements(),
+        breathingSegments = dao.getAllBreathingSegments(),
+        analysisWindows = dao.getAllAnalysisWindows(),
+    )
+
     suspend fun deleteSession(sessionId: Long) = dao.deleteSession(sessionId)
     suspend fun deleteAllSessions() = dao.deleteAllSessions()
     suspend fun cancelInterruptedSessions() = dao.cancelInterruptedSessions(System.currentTimeMillis())
 
-    private fun symptomFlags(feedback: UserFeedback): String = buildList {
-        if (feedback.dizzy) add("DIZZY")
-        if (feedback.tingling) add("TINGLING")
-        if (feedback.airHunger) add("AIR_HUNGER")
-        if (feedback.poundingHeart) add("POUNDING_HEART")
-        if (feedback.otherDiscomfort) add("OTHER_DISCOMFORT")
-    }.joinToString("|")
 }

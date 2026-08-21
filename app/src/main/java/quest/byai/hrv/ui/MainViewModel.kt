@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import quest.byai.hrv.AppContainer
 import quest.byai.hrv.data.SessionEntity
+import quest.byai.hrv.data.BreathingSoundStyle
 import quest.byai.hrv.data.UserSettings
 import quest.byai.hrv.domain.SensorConnectionState
 import quest.byai.hrv.domain.SensorDevice
@@ -26,6 +27,7 @@ enum class AppScreen {
     HOME,
     SENSOR,
     SESSION_SETUP,
+    PREPARATION,
     CALIBRATION,
     SESSION,
     SUMMARY,
@@ -38,6 +40,7 @@ data class SessionDraft(
     val durationSeconds: Long = 600,
     val rate: Double = 6.0,
     val inhaleFraction: Double = 0.5,
+    val preparationBreathsEnabled: Boolean = false,
 )
 
 class MainViewModel(private val container: AppContainer) : ViewModel() {
@@ -112,11 +115,13 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
         rate: Double = mutableDraft.value.rate,
         durationSeconds: Long = mutableDraft.value.durationSeconds,
         inhaleFraction: Double = mutableDraft.value.inhaleFraction,
+        preparationBreathsEnabled: Boolean = mutableDraft.value.preparationBreathsEnabled,
     ) {
         mutableDraft.value = mutableDraft.value.copy(
             rate = rate,
             durationSeconds = durationSeconds,
             inhaleFraction = inhaleFraction,
+            preparationBreathsEnabled = preparationBreathsEnabled,
         )
     }
 
@@ -128,6 +133,18 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
             inhaleFraction = 0.5,
         )
         startSession()
+    }
+
+    fun beginSession() {
+        if (mutableDraft.value.preparationBreathsEnabled) {
+            mutableScreen.value = AppScreen.PREPARATION
+        } else {
+            startSession()
+        }
+    }
+
+    fun cancelPreparation() {
+        mutableScreen.value = AppScreen.SESSION_SETUP
     }
 
     fun startSession() = viewModelScope.launch {
@@ -196,11 +213,17 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
         container.preferences.setSoundEnabled(enabled)
     }
 
+    fun setSoundStyle(style: BreathingSoundStyle) = viewModelScope.launch {
+        container.preferences.setSoundStyle(style)
+    }
+
     fun setHapticsEnabled(enabled: Boolean) = viewModelScope.launch {
         container.preferences.setHapticsEnabled(enabled)
     }
 
     suspend fun exportSession(sessionId: Long): String = container.repository.exportCsv(sessionId)
+
+    suspend fun exportAllHistory(): ByteArray = container.repository.exportAllHistory()
 
     fun deleteSession(sessionId: Long) = viewModelScope.launch {
         container.repository.deleteSession(sessionId)

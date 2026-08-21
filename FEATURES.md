@@ -43,7 +43,8 @@ HRV AI is wellness and biofeedback software. It is not a medical device and does
 - Session duration selection.
 - 50/50 or 40/60 inhale-to-exhale timing.
 - Visual breathing pacer.
-- Optional sound cues.
+- Three optional peaceful sound styles with noticeably different inhale and exhale cues: gentle chimes, ocean swell, and singing bowls.
+- Optional three-breath preparation before timed practice.
 - Optional haptic cues.
 
 ### Calibration
@@ -64,7 +65,6 @@ HRV AI is wellness and biofeedback software. It is not a medical device and does
 - Requires a meaningful score improvement before accepting a candidate rate.
 - Reverts and reverses direction when a candidate does not improve the accepted baseline.
 - Holds the current rate when data is missing, noisy, too short, or inconclusive.
-- Reverts after user-reported discomfort.
 
 ## Real-time calculation and adjustment
 
@@ -116,7 +116,7 @@ The Elite-style live score is an additional metric and visualization. It does no
 - Returning to the foreground starts a new settling period before evaluation resumes.
 - Interrupted database sessions are marked cancelled after process death.
 - The screen remains awake during an active breathing session.
-- Post-session prompts capture dizziness, tingling, air hunger, pounding heart, other discomfort, and ease rating.
+- Post-session prompt captures an ease rating.
 - In-app guidance tells users to stop and return to natural breathing if uncomfortable.
 
 ## Local data and privacy
@@ -129,6 +129,8 @@ The Elite-style live score is an additional metric and visualization. It does no
 - Raw and corrected R-R intervals retained for inspection and export.
 - Breathing segments, analysis windows, controller decisions, confidence, and user feedback stored locally.
 - CSV session export initiated by the user.
+- Complete-history ZIP export containing session summaries, every raw R-R sample, rolling HRV/RMSSD measurements, breathing segments, and resonance-analysis windows.
+- Rolling 15-second HRV/RMSSD values persisted approximately every two seconds for raw score-history export.
 - Individual-session deletion.
 - Delete-all-data control.
 - Public privacy policy available from the app and Play listing.

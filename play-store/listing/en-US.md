@@ -35,6 +35,6 @@ HRV AI is experimental wellness and biofeedback software. It is not a medical de
 
 Privacy policy: https://by211.github.io/hrv-ai/privacy-policy.html
 
-## Internal testing release notes — 0.1.3
+## Internal testing release notes — 0.1.4
 
-Adds a rolling live HRV score and completed-session artifact-corrected RMSSD/lnRMSSD calculation while retaining resonance-guided breathing-rate adaptation.
+Adds complete-history ZIP export with session summaries, every raw R-R interval, rolling HRV/RMSSD measurements, breathing-rate segments, and resonance-analysis windows.

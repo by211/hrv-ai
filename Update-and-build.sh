@@ -6,7 +6,7 @@ script_directory="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 project_directory="$script_directory"
 build_file="$project_directory/app/build.gradle.kts"
 signed_bundle="$project_directory/app/build/outputs/bundle/release/app-release.aab"
-play_console_url="https://play.google.com/console/u/0/developers/5964918318669525217/app/4973133755529193628/app-dashboard"
+play_console_url="https://play.google.com/console/u/0/developers/5964918318669525217/app/4973133755529193628/tracks/internal-testing"
 
 cd "$project_directory"
 

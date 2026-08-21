@@ -22,6 +22,10 @@ val hasReleaseSigning = listOf(
     releaseKeyAlias,
     releaseKeyPassword,
 ).all { !it.isNullOrBlank() }
+val gitCommitId = providers.exec {
+    commandLine("git", "rev-parse", "--short=8", "HEAD")
+    isIgnoreExitValue = true
+}.standardOutput.asText.map { output -> output.trim().ifEmpty { "unknown" } }
 
 plugins {
     id("com.android.application")
@@ -38,8 +42,10 @@ android {
         applicationId = "quest.byai.hrv"
         minSdk = 33
         targetSdk = 36
-        versionCode = 4
-        versionName = "0.1.3"
+        versionCode = 5
+        versionName = "0.1.4"
+
+        buildConfigField("String", "GIT_COMMIT_ID", "\"${gitCommitId.get()}\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
