@@ -44,10 +44,11 @@ class AdaptiveBreathingController(
         observation: ResonanceObservation,
     ): ControllerDecision {
         if (!observation.isQualified || observation.confidence < config.minimumConfidence) {
+            val reason = observation.rejectionReason ?: "Confidence ${formatPercent(observation.confidence)} < ${formatPercent(config.minimumConfidence)}"
             return ControllerDecision(
                 ControllerAction.HOLD,
                 state.commandedRate,
-                observation.rejectionReason ?: "Holding until signal confidence improves",
+                "$reason; holding ${formatRate(state.commandedRate)} breaths/min",
                 state,
             )
         }
@@ -62,7 +63,7 @@ class AdaptiveBreathingController(
             return ControllerDecision(
                 if (candidateRate == state.acceptedRate) ControllerAction.HOLD else ControllerAction.EXPLORE,
                 candidateRate,
-                "Established a qualified baseline and selected a nearby rate to compare",
+                "Baseline ${formatRate(state.acceptedRate)} scored ${formatScore(observation.score)}; next ${formatRate(candidateRate)} breaths/min",
                 nextState,
             )
         }
@@ -73,7 +74,7 @@ class AdaptiveBreathingController(
             return ControllerDecision(
                 if (candidateRate == state.acceptedRate) ControllerAction.HOLD else ControllerAction.EXPLORE,
                 candidateRate,
-                "Selected a nearby rate to compare",
+                "Baseline ${formatRate(state.acceptedRate)} scored ${formatScore(state.acceptedScore)}; next ${formatRate(candidateRate)} breaths/min",
                 nextState,
             )
         }
@@ -91,7 +92,7 @@ class AdaptiveBreathingController(
             ControllerDecision(
                 ControllerAction.ACCEPT_AND_EXPLORE,
                 candidateRate,
-                "Accepted ${formatRate(acceptedRate)} bpm after a ${"%.1f".format(improvement)} point improvement",
+                "New baseline ${formatRate(acceptedRate)} scored ${formatScore(observation.score)} (was ${formatRate(state.acceptedRate)} at ${formatScore(state.acceptedScore)}); next ${formatRate(candidateRate)} breaths/min",
                 nextState,
             )
         } else {
@@ -109,7 +110,7 @@ class AdaptiveBreathingController(
             ControllerDecision(
                 ControllerAction.REVERT_AND_EXPLORE,
                 candidateRate,
-                "The candidate did not improve enough; reverted and changed search direction",
+                "Kept baseline ${formatRate(state.acceptedRate)} at ${formatScore(state.acceptedScore)}; ${formatRate(state.commandedRate)} scored ${formatScore(observation.score)}; next ${formatRate(candidateRate)} breaths/min",
                 nextState,
             )
         }
@@ -124,4 +125,6 @@ class AdaptiveBreathingController(
     }
 
     private fun formatRate(rate: Double): String = "%.1f".format(rate)
+    private fun formatScore(score: Double): String = "%.1f".format(score)
+    private fun formatPercent(value: Double): String = "${(value * 100).toInt()}%"
 }

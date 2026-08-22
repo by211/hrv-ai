@@ -16,14 +16,21 @@ data class UserSettings(
     val savedDeviceId: String? = null,
     val preferredRate: Double = 6.0,
     val soundEnabled: Boolean = false,
-    val soundStyle: BreathingSoundStyle = BreathingSoundStyle.GENTLE_CHIMES,
+    val soundStyle: BreathingSoundStyle = BreathingSoundStyle.RELAXED_BREATHING,
     val hapticsEnabled: Boolean = true,
 )
 
 enum class BreathingSoundStyle(val displayName: String) {
-    GENTLE_CHIMES("Gentle chimes"),
+    RELAXED_BREATHING("Relaxed breathing"),
     OCEAN_SWELL("Ocean swell"),
     SINGING_BOWLS("Singing bowls"),
+
+    ;
+
+    companion object {
+        fun fromStoredName(storedName: String?): BreathingSoundStyle =
+            entries.find { it.name == storedName } ?: RELAXED_BREATHING
+    }
 }
 
 class AppPreferences(private val context: Context) {
@@ -42,9 +49,7 @@ class AppPreferences(private val context: Context) {
             savedDeviceId = values[Keys.savedDeviceId],
             preferredRate = values[Keys.preferredRate] ?: 6.0,
             soundEnabled = values[Keys.soundEnabled] ?: false,
-            soundStyle = values[Keys.soundStyle]
-                ?.let { savedStyle -> BreathingSoundStyle.entries.find { it.name == savedStyle } }
-                ?: BreathingSoundStyle.GENTLE_CHIMES,
+            soundStyle = BreathingSoundStyle.fromStoredName(values[Keys.soundStyle]),
             hapticsEnabled = values[Keys.hapticsEnabled] ?: true,
         )
     }

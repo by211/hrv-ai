@@ -15,6 +15,7 @@ class AdaptiveBreathingControllerTest {
 
         assertEquals(ControllerAction.HOLD, decision.action)
         assertEquals(6.0, decision.nextRate, 0.001)
+        assertEquals("Confidence 30% < 55%; holding 6.0 breaths/min", decision.reason)
     }
 
     @Test
@@ -24,6 +25,7 @@ class AdaptiveBreathingControllerTest {
         assertEquals(ControllerAction.EXPLORE, decision.action)
         assertEquals(5.8, decision.nextRate, 0.001)
         assertEquals(70.0, decision.state.acceptedScore!!, 0.001)
+        assertEquals("Baseline 6.0 scored 70.0; next 5.8 breaths/min", decision.reason)
     }
 
     @Test
@@ -35,6 +37,7 @@ class AdaptiveBreathingControllerTest {
         assertEquals(ControllerAction.ACCEPT_AND_EXPLORE, improved.action)
         assertEquals(5.8, improved.state.acceptedRate, 0.001)
         assertEquals(5.6, improved.nextRate, 0.001)
+        assertEquals("New baseline 5.8 scored 76.0 (was 6.0 at 70.0); next 5.6 breaths/min", improved.reason)
     }
 
     @Test
@@ -46,6 +49,7 @@ class AdaptiveBreathingControllerTest {
         assertEquals(ControllerAction.REVERT_AND_EXPLORE, worse.action)
         assertEquals(6.1, worse.nextRate, 0.001)
         assertEquals(0.1, worse.state.step, 0.001)
+        assertEquals("Kept baseline 6.0 at 70.0; 5.8 scored 68.0; next 6.1 breaths/min", worse.reason)
     }
 
     private fun observation(

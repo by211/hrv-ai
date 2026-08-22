@@ -8,14 +8,15 @@ import kotlin.math.PI
 import kotlin.math.exp
 import kotlin.math.sin
 
-/** Plays gentle, distinct synthesized cues without requiring bundled audio assets. */
+/** Plays calm, distinct synthesized cues without requiring bundled audio assets. */
 internal class BreathingSoundPlayer(style: BreathingSoundStyle) {
     private val inhaleTrack = createTrack(synthesizeCue(style, inhaling = true))
     private val exhaleTrack = createTrack(synthesizeCue(style, inhaling = false))
 
     fun play(inhaling: Boolean) {
         val track = if (inhaling) inhaleTrack else exhaleTrack
-        if (track.playState == AudioTrack.PLAYSTATE_PLAYING) track.stop()
+        stopIfPlaying(inhaleTrack)
+        stopIfPlaying(exhaleTrack)
         track.reloadStaticData()
         track.play()
     }
@@ -45,21 +46,25 @@ internal class BreathingSoundPlayer(style: BreathingSoundStyle) {
         .also { it.write(samples, 0, samples.size) }
 
     private fun synthesizeCue(style: BreathingSoundStyle, inhaling: Boolean): ShortArray = when (style) {
-        BreathingSoundStyle.GENTLE_CHIMES -> synthesizeGlide(
-            startFrequencyHz = if (inhaling) 392.0 else 523.25,
-            endFrequencyHz = if (inhaling) 523.25 else 349.23,
-        )
+        BreathingSoundStyle.RELAXED_BREATHING -> synthesizeRelaxedBreath(inhaling)
         BreathingSoundStyle.OCEAN_SWELL -> synthesizeOceanSwell(inhaling)
         BreathingSoundStyle.SINGING_BOWLS -> synthesizeSingingBowl(inhaling)
     }
 
-    private fun synthesizeGlide(startFrequencyHz: Double, endFrequencyHz: Double): ShortArray {
-        var phase = 0.0
-        return createSamples(CUE_DURATION_MS) { progress ->
-            val frequencyHz = startFrequencyHz + (endFrequencyHz - startFrequencyHz) * progress
-            phase += 2.0 * PI * frequencyHz / SAMPLE_RATE_HZ
-            val envelope = sin(PI * progress).let { it * it }
-            (sin(phase) + 0.18 * sin(phase * 2.0)) * envelope * 0.18
+    private fun synthesizeRelaxedBreath(inhaling: Boolean): ShortArray {
+        var noiseState = if (inhaling) 0x13579BDF else 0x2468ACE
+        var filteredAir = 0.0
+        var slowAir = 0.0
+        return createSamples(BREATH_DURATION_MS) { progress ->
+            noiseState = noiseState * 1_664_525 + 1_013_904_223
+            val whiteNoise = ((noiseState ushr 8) and 0xFFFF) / 32_767.5 - 1.0
+            val brightness = if (inhaling) 0.08 + 0.08 * progress else 0.055
+            filteredAir += brightness * (whiteNoise - filteredAir)
+            slowAir += 0.015 * (filteredAir - slowAir)
+            val softAir = 0.78 * filteredAir + 0.22 * (filteredAir - slowAir)
+            val swell = sin(PI * progress).coerceAtLeast(0.0).let { it * it }
+            val directionEnvelope = if (inhaling) 0.65 + 0.35 * progress else 1.0 - 0.25 * progress
+            softAir * swell * directionEnvelope * 0.28
         }
     }
 
@@ -95,9 +100,13 @@ internal class BreathingSoundPlayer(style: BreathingSoundStyle) {
         }
     }
 
+    private fun stopIfPlaying(track: AudioTrack) {
+        if (track.playState == AudioTrack.PLAYSTATE_PLAYING) track.stop()
+    }
+
     private companion object {
         const val SAMPLE_RATE_HZ = 22_050
-        const val CUE_DURATION_MS = 800
+        const val BREATH_DURATION_MS = 1_800
         const val OCEAN_DURATION_MS = 1_300
         const val BOWL_DURATION_MS = 1_500
     }

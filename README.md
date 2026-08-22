@@ -17,7 +17,7 @@ See [FEATURES.md](FEATURES.md) for the implemented feature inventory, real-time 
 - Live connection diagnostics for device identity, HR/R-R counts, last values, sample age, contact, recovery attempts, GATT status, and a `BleHeartRateSensor` Logcat trail.
 - Android 12+ Nearby Devices permission flow. The app currently targets Android 13 and newer (`minSdk` 33).
 - Fixed, calibration, and adaptive session flows.
-- Monotonic visual breathing pacer with 50/50 and 40/60 ratios, three peaceful inhale/exhale sound styles, optional haptics, and screen-awake behavior.
+- Monotonic visual breathing pacer with 50/50 and 40/60 ratios, three previewable inhale/exhale sound styles, optional haptics, and screen-awake behavior.
 - Optional three-breath preparation before the timed practice starts.
 - R-R timestamp reconstruction for BLE notifications containing multiple intervals.
 - Physiological range and local-median artifact classification, limited interpolation, contact-loss flags, and BLE-gap flags.

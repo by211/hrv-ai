@@ -43,7 +43,8 @@ HRV AI is wellness and biofeedback software. It is not a medical device and does
 - Session duration selection.
 - 50/50 or 40/60 inhale-to-exhale timing.
 - Visual breathing pacer.
-- Three optional peaceful sound styles with noticeably different inhale and exhale cues: gentle chimes, ocean swell, and singing bowls.
+- Three optional peaceful sound styles with noticeably different inhale and exhale cues: relaxed breathing, ocean swell, and singing bowls.
+- In-settings inhale/exhale preview whenever a sound style is selected.
 - Optional three-breath preparation before timed practice.
 - Optional haptic cues.
 
@@ -65,6 +66,7 @@ HRV AI is wellness and biofeedback software. It is not a medical device and does
 - Requires a meaningful score improvement before accepting a candidate rate.
 - Reverts and reverses direction when a candidate does not improve the accepted baseline.
 - Holds the current rate when data is missing, noisy, too short, or inconclusive.
+- Concise controller status names the baseline rate/score, tested rate/score, and next selected rate.
 
 ## Real-time calculation and adjustment
 

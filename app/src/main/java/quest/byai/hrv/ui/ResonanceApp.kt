@@ -1020,6 +1020,20 @@ private fun SettingsScreen(
     val context = LocalContext.current
     val privacyPolicyUrl = stringResource(R.string.privacy_policy_url)
     var confirmDelete by remember { mutableStateOf(false) }
+    var previewSoundStyle by remember { mutableStateOf<BreathingSoundStyle?>(null) }
+    var previewRequest by remember { mutableIntStateOf(0) }
+    LaunchedEffect(previewSoundStyle, previewRequest) {
+        val style = previewSoundStyle ?: return@LaunchedEffect
+        val player = runCatching { BreathingSoundPlayer(style) }.getOrNull() ?: return@LaunchedEffect
+        try {
+            player.play(inhaling = true)
+            delay(1_400)
+            player.play(inhaling = false)
+            delay(1_900)
+        } finally {
+            player.release()
+        }
+    }
     ScreenScaffold("Settings", onBack) { padding ->
         Column(
             Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(20.dp),
@@ -1028,13 +1042,23 @@ private fun SettingsScreen(
             SwitchRow("Peaceful sound cues", "Different sounds mark inhale and exhale", settings.soundEnabled, onSound)
             if (settings.soundEnabled) {
                 SettingSection("Sound style", settings.soundStyle.displayName) {
+                    Text(
+                        "Tap a style to hear its inhale and exhale preview.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.secondary,
+                    )
                     BreathingSoundStyle.entries.forEach { style ->
+                        val selectAndPreview = {
+                            onSoundStyle(style)
+                            previewSoundStyle = style
+                            previewRequest += 1
+                        }
                         if (style == settings.soundStyle) {
-                            FilledTonalButton(onClick = { onSoundStyle(style) }, modifier = Modifier.fillMaxWidth()) {
+                            FilledTonalButton(onClick = selectAndPreview, modifier = Modifier.fillMaxWidth()) {
                                 Text(style.displayName)
                             }
                         } else {
-                            OutlinedButton(onClick = { onSoundStyle(style) }, modifier = Modifier.fillMaxWidth()) {
+                            OutlinedButton(onClick = selectAndPreview, modifier = Modifier.fillMaxWidth()) {
                                 Text(style.displayName)
                             }
                         }
